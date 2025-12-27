@@ -4,19 +4,31 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
 
-    const response = await fetch("/auth/login", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ email, password })
-    });
+    try {
+        const response = await fetch("/auth/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            credentials: "include", // ✅ VERY IMPORTANT
+            body: JSON.stringify({ email, password })
+        });
 
-    const data = await response.json();
+        const data = await response.json();
 
-    if (response.ok) {
-        alert("Login successful");
-    } else {
-        alert(data.message || "Login failed");
+        if (!response.ok) {
+            alert(data.message || "Login failed");
+            return;
+        }
+
+        // ✅ REDIRECT BASED ON ROLE
+        if (data.role === "admin") {
+            window.location.href = "/admin";
+        } else {
+            window.location.href = "/employee";
+        }
+
+    } catch (error) {
+        alert("Something went wrong");
     }
 });

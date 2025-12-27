@@ -33,19 +33,40 @@ exports.login = async (req, res) => {
 
     try {
         const user = await User.findOne({ email });
-        if (!user) return res.status(400).send("Invalid credentials");
+        if (!user) {
+            return res.status(400).json({ message: "Invalid credentials" });
+        }
 
         const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).send("Invalid credentials");
+        if (!isMatch) {
+            return res.status(400).json({ message: "Invalid credentials" });
+        }
 
         const token = jwt.sign(
-            { id: user._id, role: user.role, name: user.name },
+            { 
+              id: user._id, 
+              role: user.role, 
+              name: user.name 
+            },
             process.env.JWT_SECRET,
             { expiresIn: "1d" }
         );
 
-        res.json({ token });
+        // 🔐 STORE JWT IN COOKIE
+        res.cookie("token", token, {
+            httpOnly: true,   // JS cannot access
+            secure: true,     // HTTPS only
+            sameSite: "strict",
+            maxAge: 24 * 60 * 60 * 1000
+        });
+
+        res.json({
+            message: "Login successful",
+            role: user.role
+        });
+        
     } catch (err) {
-        res.status(500).send("Server error");
+        res.status(500).json({ message: "Server error" });
     }
 };
+
