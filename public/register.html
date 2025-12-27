@@ -1,7 +1,9 @@
-<form action="/auth/register" method="POST">
+<form id="registerForm">
     <h2>Register</h2>
-    <input name="name" placeholder="Name" required />
-    <input name="email" placeholder="Email" required />
-    <input type="password" name="password" placeholder="Password" required />
+    <input id="name" placeholder="Name" required>
+    <input id="email" type="email" required>
+    <input id="password" type="password" required>
     <button type="submit">Register</button>
+    
 </form>
+<script src="/js/register.js"></script>
