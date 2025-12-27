@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const generateOtp = require("../utils/generateOtp");
 
 // REGISTER
 exports.register = async (req, res) => {
@@ -70,3 +71,60 @@ exports.login = async (req, res) => {
     }
 };
 
+exports.requestOtp = async (req, res) => {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+        return res.status(400).json({ message: "User not found" });
+    }
+
+    const otp = generateOtp();
+    const hashedOtp = await bcrypt.hash(otp, 10);
+
+    user.otp = hashedOtp;
+    user.otpExpires = Date.now() + 5 * 60 * 1000; // 5 minutes
+    await user.save();
+
+    // 🚨 TEMPORARY (DEV ONLY)
+    console.log("OTP:", otp);
+
+    res.json({ message: "OTP sent" });
+};
+
+exports.verifyOtp = async (req, res) => {
+    const { email, otp } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user || !user.otp) {
+        return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    if (user.otpExpires < Date.now()) {
+        return res.status(400).json({ message: "OTP expired" });
+    }
+
+    const isMatch = await bcrypt.compare(otp, user.otp);
+    if (!isMatch) {
+        return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    // Clear OTP
+    user.otp = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+
+    const token = jwt.sign(
+        { id: user._id, role: user.role, name: user.name },
+        process.env.JWT_SECRET,
+        { expiresIn: "1d" }
+    );
+
+    res.cookie("token", token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "strict"
+    });
+
+    res.json({ role: user.role });
+};

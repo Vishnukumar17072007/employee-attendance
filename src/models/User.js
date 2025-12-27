@@ -5,20 +5,33 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+
     email: {
         type: String,
         unique: true,
         required: true
     },
+
+    // 🔐 OPTIONAL (for password login)
     password: {
-        type: String,
-        required: true
+        type: String
     },
+
     role: {
         type: String,
         enum: ["admin", "employee"],
         default: "employee"
     },
+
+    // 🔑 OTP AUTH FIELDS
+    otp: {
+        type: String
+    },
+
+    otpExpires: {
+        type: Date
+    },
+
     createdAt: {
         type: Date,
         default: Date.now
