@@ -33,20 +33,6 @@ document.getElementById("passwordLoginForm").addEventListener("submit", async (e
 // ==============================
 // 🔑 OTP LOGIN (NEW LOGIC)
 // ==============================
-document.getElementById("sendOtp").addEventListener("click", async () => {
-    const email = document.getElementById("oEmail").value;
-
-    const res = await fetch("/auth/request-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email })
-    });
-
-    if (res.ok) {
-        alert("OTP sent");
-        document.getElementById("otpSection").style.display = "block";
-    }
-});
 
 document.getElementById("verifyOtp").addEventListener("click", async () => {
     const email = document.getElementById("oEmail").value;
@@ -80,3 +66,22 @@ function redirectByRole(role) {
         window.location.href = "/employee";
     }
 }
+
+document.getElementById("sendOtp").addEventListener("click", async () => {
+    const email = document.getElementById("oEmail").value;
+
+    console.log("OTP email:", email); // 👈 ADD THIS
+
+    const res = await fetch("/auth/request-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
+    });
+
+    console.log("OTP response status:", res.status); // 👈 ADD THIS
+
+    if (res.ok) {
+        alert("OTP sent");
+        document.getElementById("otpSection").style.display = "block";
+    }
+});

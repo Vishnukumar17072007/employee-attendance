@@ -72,6 +72,9 @@ exports.login = async (req, res) => {
 };
 
 exports.requestOtp = async (req, res) => {
+    console.log("🔥 requestOtp HIT");
+    console.log("REQ BODY:", req.body);
+
     const { email } = req.body;
 
     const user = await User.findOne({ email });
