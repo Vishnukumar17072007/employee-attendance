@@ -89,9 +89,6 @@ exports.requestOtp = async (req, res) => {
     user.otpExpires = Date.now() + 5 * 60 * 1000; // 5 minutes
     await user.save();
 
-    // 🚨 TEMPORARY (DEV ONLY)
-    console.log("OTP:", otp);
-
     res.json({ message: "OTP sent" });
 };
 
@@ -130,4 +127,36 @@ exports.verifyOtp = async (req, res) => {
     });
 
     res.json({ role: user.role });
+};
+
+//request OTP
+const sendEmail = require("../utils/sendEmail");
+
+exports.requestOtp = async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ message: "Email required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+        return res.status(400).json({ message: "User not found" });
+    }
+
+    const otp = generateOtp();
+    const hashedOtp = await bcrypt.hash(otp, 10);
+
+    user.otp = hashedOtp;
+    user.otpExpires = Date.now() + 5 * 60 * 1000; // 5 minutes
+    await user.save();
+
+    // 📧 SEND OTP EMAIL
+    await sendEmail(
+        email,
+        "Your Login OTP",
+        `Your OTP is ${otp}. It will expire in 5 minutes.`
+    );
+
+    res.json({ message: "OTP sent to email" });
 };

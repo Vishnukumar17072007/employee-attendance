@@ -1,5 +1,6 @@
 const https = require("https");
 const fs = require("fs");
+require("dotenv").config();
 const app = require("./src/app");
 const open = require("open").default;
 

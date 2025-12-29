@@ -70,7 +70,10 @@ function redirectByRole(role) {
 document.getElementById("sendOtp").addEventListener("click", async () => {
     const email = document.getElementById("oEmail").value;
 
-    console.log("OTP email:", email); // 👈 ADD THIS
+    if (!email) {
+        alert("Please enter email");
+        return;
+    }
 
     const res = await fetch("/auth/request-otp", {
         method: "POST",
@@ -78,10 +81,13 @@ document.getElementById("sendOtp").addEventListener("click", async () => {
         body: JSON.stringify({ email })
     });
 
-    console.log("OTP response status:", res.status); // 👈 ADD THIS
+    const data = await res.json();
 
-    if (res.ok) {
-        alert("OTP sent");
-        document.getElementById("otpSection").style.display = "block";
+    if (!res.ok) {
+        alert(data.message || "Failed to send OTP");
+        return;
     }
+
+    alert("OTP sent to your email");
+    document.getElementById("otpSection").style.display = "block";
 });
