@@ -93,40 +93,66 @@ exports.requestOtp = async (req, res) => {
 };
 
 exports.verifyOtp = async (req, res) => {
-    const { email, otp } = req.body;
+    try {
+        const { email, phone, otp } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user || !user.otp) {
-        return res.status(400).json({ message: "Invalid OTP" });
+        if (!otp) {
+            return res.status(400).json({ message: "OTP is required" });
+        }
+
+        // 🔍 Find user by email OR phone
+        const user = await User.findOne({
+            $or: [
+                email ? { email } : null,
+                phone ? { phone } : null
+            ].filter(Boolean)
+        });
+
+        if (!user) {
+            return res.status(400).json({ message: "User not found" });
+        }
+
+        if (!user.otp || !user.otpExpires) {
+            return res.status(400).json({ message: "No OTP found. Request OTP again." });
+        }
+
+        // ⏰ Check expiry
+        if (user.otpExpires < Date.now()) {
+            return res.status(400).json({ message: "OTP expired" });
+        }
+
+        // 🔐 VERY IMPORTANT: bcrypt compare (string vs hash)
+        const isMatch = await bcrypt.compare(String(otp), user.otp);
+
+        if (!isMatch) {
+            return res.status(400).json({ message: "Invalid OTP" });
+        }
+
+        // ✅ OTP verified → clear OTP
+        user.otp = undefined;
+        user.otpExpires = undefined;
+        await user.save();
+
+        // 🎟️ Generate JWT
+        const token = jwt.sign(
+            { id: user._id, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: "1d" }
+        );
+
+        // 🍪 Send cookie
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "strict"
+        });
+
+        res.json({ role: user.role });
+
+    } catch (err) {
+        console.error("VERIFY OTP ERROR:", err);
+        res.status(500).json({ message: "Server error" });
     }
-
-    if (user.otpExpires < Date.now()) {
-        return res.status(400).json({ message: "OTP expired" });
-    }
-
-    const isMatch = await bcrypt.compare(otp, user.otp);
-    if (!isMatch) {
-        return res.status(400).json({ message: "Invalid OTP" });
-    }
-
-    // Clear OTP
-    user.otp = undefined;
-    user.otpExpires = undefined;
-    await user.save();
-
-    const token = jwt.sign(
-        { id: user._id, role: user.role, name: user.name },
-        process.env.JWT_SECRET,
-        { expiresIn: "1d" }
-    );
-
-    res.cookie("token", token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "strict"
-    });
-
-    res.json({ role: user.role });
 };
 
 //request OTP
@@ -159,4 +185,81 @@ exports.requestOtp = async (req, res) => {
     );
 
     res.json({ message: "OTP sent to email" });
+};
+
+//Sms OTP
+const sendSms = require("../utils/sendSms");
+
+exports.requestMobileOtp = async (req, res) => {
+    try {
+        const { phone } = req.body;
+
+        if (!phone) {
+            return res.status(400).json({ message: "Phone number required" });
+        }
+
+        const user = await User.findOne({ phone });
+        if (!user) {
+            return res.status(400).json({ message: "User not found" });
+        }
+
+        // ✅ ADD THIS CHECK HERE
+        if (!user.phone) {
+            return res.status(400).json({ message: "Phone number not registered" });
+        }
+
+        const otp = generateOtp();
+        const hashedOtp = await bcrypt.hash(otp, 10);
+
+        user.otp = hashedOtp;
+        user.otpExpires = Date.now() + 5 * 60 * 1000;
+        await user.save();
+
+        await sendSms(
+            user.phone,
+            `Your OTP is ${otp}. It expires in 5 minutes.`
+        );
+
+        res.json({ message: "OTP sent to mobile" });
+
+    } catch (err) {
+        console.error("SMS OTP ERROR:", err);
+        res.status(500).json({ message: "Failed to send OTP" });
+    }
+};
+
+//sent OTP via whatsapp
+const sendWhatsApp = require("../utils/sendWhatsApp");
+
+exports.requestWhatsAppOtp = async (req, res) => {
+    try {
+        const { phone } = req.body;
+
+        if (!phone) {
+            return res.status(400).json({ message: "Phone number required" });
+        }
+
+        const user = await User.findOne({ phone });
+        if (!user) {
+            return res.status(400).json({ message: "User not found" });
+        }
+
+        const otp = generateOtp();
+        const hashedOtp = await bcrypt.hash(String(otp), 10);
+
+        user.otp = hashedOtp;
+        user.otpExpires = Date.now() + 5 * 60 * 1000;
+        await user.save();
+
+        await sendWhatsApp(
+            phone,
+            `🔐 Your OTP is *${otp}*\nIt expires in 5 minutes.`
+        );
+
+        res.json({ message: "OTP sent via WhatsApp" });
+
+    } catch (err) {
+        console.error("WHATSAPP OTP ERROR:", err);
+        res.status(500).json({ message: "Failed to send WhatsApp OTP" });
+    }
 };

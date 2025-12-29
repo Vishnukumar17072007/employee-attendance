@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const authController = require("../controllers/authController");
 
+
 router.post("/register", authController.register);
 router.post("/login", authController.login);
 router.post("/request-otp", authController.requestOtp);
@@ -15,7 +16,8 @@ router.post("/logout", (req, res) => {
 
     res.json({ message: "Logged out successfully" });
 });
-
+router.post("/request-mobile-otp", authController.requestMobileOtp);
+router.post("/request-whatsapp-otp", authController.requestWhatsAppOtp);
 
 
 module.exports = router;
